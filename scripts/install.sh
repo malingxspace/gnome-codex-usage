@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-UUID="codex-usage@malingxspace"
+UUID="codex-usage@malingxspace.github.com"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST="$HOME/.local/share/gnome-shell/extensions/$UUID"
 

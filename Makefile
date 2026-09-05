@@ -1,4 +1,4 @@
-UUID := codex-usage@malingxspace
+UUID := codex-usage@malingxspace.github.com
 DIST := dist
 
 .PHONY: test install package clean

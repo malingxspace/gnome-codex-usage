@@ -35,7 +35,7 @@ https://chatgpt.com/backend-api/wham/usage
 git clone https://github.com/malingxspace/gnome-codex-usage.git
 cd gnome-codex-usage
 make install
-gnome-extensions enable codex-usage@malingxspace
+gnome-extensions enable codex-usage@malingxspace.github.com
 ```
 
 Wayland 下如果 GNOME Shell 尚未发现新扩展，请注销并重新登录一次。

@@ -1,6 +1,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -17,8 +18,6 @@ import {
     percent,
     remaining,
 } from './utils/format.js';
-
-const BAR_WIDTH = 258;
 
 class UsageWindowView {
     constructor(title) {
@@ -44,13 +43,14 @@ class UsageWindowView {
         header.add_child(this._usedLabel);
         this.actor.add_child(header);
 
+        this._usedFraction = 0;
         this._track = new St.Widget({
-            width: BAR_WIDTH,
             height: 8,
             x_expand: true,
             style_class: 'codex-usage-progress-track',
             layout_manager: new Clutter.BinLayout(),
         });
+        this._track.connect('notify::allocation', () => this._syncFillWidth());
         this._fill = new St.Widget({
             width: 0,
             height: 8,
@@ -83,14 +83,16 @@ class UsageWindowView {
             this._usedLabel.text = '—';
             this._remainingLabel.text = '剩余 —';
             this._resetLabel.text = '该套餐未提供此窗口';
-            this._fill.width = 0;
+            this._usedFraction = 0;
+            this._syncFillWidth();
             return;
         }
 
         this._usedLabel.text = `${percent(window.used)} 已使用`;
         this._remainingLabel.text = `剩余 ${percent(remaining(window))}`;
         this._resetLabel.text = formatResetTime(window.resetAt, resetTimeMode);
-        this._fill.width = Math.max(2, Math.round(BAR_WIDTH * window.used));
+        this._usedFraction = window.used;
+        this._syncFillWidth();
 
         if (window.used >= 0.95)
             this._fill.add_style_class_name('critical');
@@ -98,11 +100,22 @@ class UsageWindowView {
             this._fill.add_style_class_name('warning');
     }
 
+    _syncFillWidth() {
+        if (!this._fill)
+            return;
+        const trackWidth = this._track.allocation.get_width();
+        if (trackWidth <= 0)
+            return;
+        const fillWidth = Math.round(trackWidth * this._usedFraction);
+        this._fill.width = this._usedFraction > 0 ? Math.max(2, fillWidth) : 0;
+    }
+
     destroy() {
         this.actor.destroy();
     }
 }
 
+const CodexIndicator = GObject.registerClass(
 class CodexIndicator extends PanelMenu.Button {
     constructor(extension, settings, onRefresh) {
         super(0.0, extension.metadata.name, false);
@@ -114,10 +127,9 @@ class CodexIndicator extends PanelMenu.Button {
         this._panelBox = new St.BoxLayout({
             style_class: 'panel-status-menu-box codex-usage-panel-box',
         });
-        this._icon = new St.Label({
-            text: '◇',
-            y_align: Clutter.ActorAlign.CENTER,
-            style_class: 'codex-usage-panel-icon',
+        this._icon = new St.Icon({
+            gicon: this._loadIcon('codex-symbolic.svg'),
+            icon_size: 16,
         });
         this._panelLabel = new St.Label({
             text: '—',
@@ -130,6 +142,12 @@ class CodexIndicator extends PanelMenu.Button {
 
         this._buildMenu();
         this._applyDisplaySettings();
+    }
+
+    _loadIcon(name) {
+        return new Gio.FileIcon({
+            file: this._extension.dir.get_child('icons').get_child(name),
+        });
     }
 
     _buildMenu() {
@@ -149,10 +167,10 @@ class CodexIndicator extends PanelMenu.Button {
             x_expand: true,
             style_class: 'codex-usage-header',
         });
-        const logo = new St.Label({
-            text: '◇',
+        const logo = new St.Icon({
+            gicon: this._loadIcon('codex-app.svg'),
+            icon_size: 22,
             y_align: Clutter.ActorAlign.CENTER,
-            style_class: 'codex-usage-header-icon',
         });
         this._providerLabel = new St.Label({
             text: 'Codex',
@@ -176,10 +194,11 @@ class CodexIndicator extends PanelMenu.Button {
         header.add_child(this._statusLabel);
         content.add_child(header);
 
-        content.add_child(new St.Widget({
+        this._fiveHourSeparator = new St.Widget({
             height: 1,
             style_class: 'codex-usage-separator',
-        }));
+        });
+        content.add_child(this._fiveHourSeparator);
 
         this._fiveHourView = new UsageWindowView('5 小时额度');
         content.add_child(this._fiveHourView.actor);
@@ -255,7 +274,11 @@ class CodexIndicator extends PanelMenu.Button {
         this._planLabel.visible = Boolean(usage.plan);
 
         const resetTimeMode = this._settings.get_string('reset-time-mode');
-        this._fiveHourView.update(usage.fiveHour, resetTimeMode);
+        const showFiveHour = Boolean(usage.fiveHour?.available);
+        this._fiveHourSeparator.visible = showFiveHour;
+        this._fiveHourView.actor.visible = showFiveHour;
+        if (showFiveHour)
+            this._fiveHourView.update(usage.fiveHour, resetTimeMode);
         this._weeklyView.update(usage.weekly, resetTimeMode);
         this._syncLabel.text = formatLastUpdated(usage.fetchedAt);
 
@@ -310,7 +333,7 @@ class CodexIndicator extends PanelMenu.Button {
         this._weeklyView?.destroy();
         super.destroy();
     }
-}
+});
 
 export default class CodexUsageExtension extends Extension {
     enable() {

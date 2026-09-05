@@ -1,5 +1,5 @@
 {
-  "uuid": "codex-usage@malingxspace",
+  "uuid": "codex-usage@malingxspace.github.com",
   "name": "Codex Usage",
   "description": "Codex quota indicator for GNOME Shell",
   "shell-version": ["50"],
