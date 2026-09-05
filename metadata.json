@@ -1,0 +1,9 @@
+{
+  "uuid": "codex-usage@malingxspace",
+  "name": "Codex Usage",
+  "description": "Codex quota indicator for GNOME Shell",
+  "shell-version": ["50"],
+  "settings-schema": "org.gnome.shell.extensions.codex-usage",
+  "url": "https://github.com/malingxspace/gnome-codex-usage",
+  "version": 1
+}
