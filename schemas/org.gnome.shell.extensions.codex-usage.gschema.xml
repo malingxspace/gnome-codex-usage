@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.codex-usage" path="/org/gnome/shell/extensions/codex-usage/">
+    <key name="show-icon" type="b">
+      <default>true</default>
+      <summary>Show icon in panel</summary>
+    </key>
+    <key name="show-percentage" type="b">
+      <default>true</default>
+      <summary>Show percentage in panel</summary>
+    </key>
+    <key name="percentage-mode" type="s">
+      <default>'remaining'</default>
+      <summary>Percentage display mode</summary>
+    </key>
+    <key name="reset-time-mode" type="s">
+      <default>'relative'</default>
+      <summary>Reset time display mode</summary>
+    </key>
+    <key name="refresh-interval" type="u">
+      <default>300</default>
+      <summary>Refresh interval in seconds</summary>
+    </key>
+    <key name="notifications-enabled" type="b">
+      <default>true</default>
+      <summary>Enable quota notifications</summary>
+    </key>
+    <key name="warning-threshold" type="u">
+      <default>85</default>
+      <summary>Used percentage warning threshold</summary>
+    </key>
+  </schema>
+</schemalist>
