@@ -38,6 +38,16 @@ export function formatResetTime(date, mode = 'relative') {
     return `${minutes}分钟后重置`;
 }
 
+export function formatShortDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime()))
+        return '未知';
+
+    return new Intl.DateTimeFormat(undefined, {
+        month: 'numeric',
+        day: 'numeric',
+    }).format(date);
+}
+
 export function formatLastUpdated(date) {
     if (!(date instanceof Date) || Number.isNaN(date.getTime()))
         return '尚未同步';

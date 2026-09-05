@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+    parseResetCredits,
     parseUsageResponse,
     preferredWindow,
     routeRateLimitWindows,
@@ -51,6 +52,28 @@ import {
     });
     assert.equal(result.fiveHour.used, 0.10);
     assert.equal(result.weekly.used, 0.20);
+}
+
+{
+    const credits = parseResetCredits({
+        credits: [
+            {granted_at: '2026-09-04T01:40:59Z', expires_at: '2026-10-04T01:40:59Z'},
+            {granted_at: '2026-08-22T06:25:14Z', expires_at: '2026-09-21T06:25:14Z'},
+            null,
+            {granted_at: '2026-09-05T00:00:00Z', expires_at: 'not-a-date'},
+        ],
+    });
+
+    assert.equal(credits.length, 2);
+    assert.equal(credits[0].expiresAt.getTime(), Date.parse('2026-09-21T06:25:14Z'));
+    assert.equal(credits[1].expiresAt.getTime(), Date.parse('2026-10-04T01:40:59Z'));
+    assert.equal(credits[0].grantedAt.getTime(), Date.parse('2026-08-22T06:25:14Z'));
+}
+
+{
+    assert.deepEqual(parseResetCredits(null), []);
+    assert.deepEqual(parseResetCredits({}), []);
+    assert.deepEqual(parseResetCredits({credits: []}), []);
 }
 
 console.log('usage parser tests passed');

@@ -11,6 +11,7 @@
 - 兼容只有 Weekly quota 的套餐
 - 根据 `limit_window_seconds` 识别窗口，不依赖 primary/secondary 固定位置
 - 显示 reset 时间
+- 列出可用的重置卡（发放 / 过期时间），无卡时自动隐藏
 - 手动刷新
 - 5 / 15 / 30 分钟自动刷新
 - 70 / 85 / 95% 用量阈值通知

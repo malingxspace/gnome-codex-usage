@@ -80,6 +80,30 @@ export function routeRateLimitWindows(rateLimit) {
     };
 }
 
+/**
+ * Parse the reset credits ("重置卡") payload from
+ * /backend-api/wham/rate-limit-reset-credits. Only entries with a
+ * valid expiry are kept; cards are sorted by expiry ascending.
+ */
+export function parseResetCredits(payload) {
+    const rawCredits = Array.isArray(payload?.credits) ? payload.credits : [];
+    const credits = [];
+
+    for (const raw of rawCredits) {
+        if (!raw || typeof raw !== 'object')
+            continue;
+        const expiresAt = parseResetAt(raw.expires_at);
+        if (!expiresAt)
+            continue;
+        credits.push({
+            grantedAt: parseResetAt(raw.granted_at),
+            expiresAt,
+        });
+    }
+
+    return credits.sort((a, b) => a.expiresAt - b.expiresAt);
+}
+
 export function parseUsageResponse(payload) {
     if (!payload || typeof payload !== 'object' || !payload.rate_limit)
         throw new Error('用量响应缺少 rate_limit');

@@ -14,6 +14,7 @@ import {preferredWindow, UsageWindowKind} from './models/usage.js';
 import {
     formatLastUpdated,
     formatResetTime,
+    formatShortDate,
     formatWindowPercent,
     percent,
     remaining,
@@ -129,7 +130,7 @@ class CodexIndicator extends PanelMenu.Button {
         });
         this._icon = new St.Icon({
             gicon: this._loadIcon('codex-symbolic.svg'),
-            icon_size: 16,
+            icon_size: 13,
         });
         this._panelLabel = new St.Label({
             text: '—',
@@ -211,16 +212,64 @@ class CodexIndicator extends PanelMenu.Button {
         this._weeklyView = new UsageWindowView('每周额度');
         content.add_child(this._weeklyView.actor);
 
+        this._creditsSeparator = new St.Widget({
+            height: 1,
+            style_class: 'codex-usage-separator',
+        });
+        content.add_child(this._creditsSeparator);
+
+        this._creditsBox = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            style_class: 'codex-usage-credits',
+        });
+        const creditsHeader = new St.BoxLayout({x_expand: true});
+        creditsHeader.add_child(new St.Label({
+            text: '重置卡',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+            style_class: 'codex-usage-window-title',
+        }));
+        this._creditsCount = new St.Label({
+            text: '',
+            y_align: Clutter.ActorAlign.CENTER,
+            style_class: 'codex-usage-credits-count dim-label',
+        });
+        creditsHeader.add_child(this._creditsCount);
+        this._creditsBox.add_child(creditsHeader);
+
+        this._creditsRows = new St.BoxLayout({
+            vertical: true,
+            x_expand: true,
+            style_class: 'codex-usage-credit-rows',
+        });
+        this._creditsBox.add_child(this._creditsRows);
+        content.add_child(this._creditsBox);
+
         content.add_child(new St.Widget({
             height: 1,
             style_class: 'codex-usage-separator',
         }));
 
+        const footer = new St.BoxLayout({
+            x_expand: true,
+            style_class: 'codex-usage-footer',
+        });
         this._syncLabel = new St.Label({
             text: '尚未同步',
+            x_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
             style_class: 'codex-usage-sync-label dim-label',
         });
-        content.add_child(this._syncLabel);
+        footer.add_child(this._syncLabel);
+        footer.add_child(this._makeIconButton(
+            'view-refresh-symbolic', '刷新用量', () => this._onRefresh()));
+        footer.add_child(this._makeIconButton(
+            'preferences-system-symbolic', '打开设置', () => {
+                this.menu.close();
+                this._extension.openPreferences();
+            }));
+        content.add_child(footer);
 
         this._errorLabel = new St.Label({
             text: '',
@@ -228,36 +277,44 @@ class CodexIndicator extends PanelMenu.Button {
             style_class: 'codex-usage-error-label',
         });
         content.add_child(this._errorLabel);
+    }
 
-        const actionItem = new PopupMenu.PopupBaseMenuItem({
-            reactive: false,
-            can_focus: false,
-        });
-        const actions = new St.BoxLayout({
-            x_expand: true,
-            style_class: 'codex-usage-actions',
-        });
-        const refreshButton = new St.Button({
-            label: '⟳  刷新',
+    _makeIconButton(iconName, accessibleName, onClicked) {
+        const button = new St.Button({
             can_focus: true,
-            x_expand: true,
-            style_class: 'button codex-usage-action-button',
+            style_class: 'button codex-usage-icon-button',
+            child: new St.Icon({icon_name: iconName, icon_size: 14}),
         });
-        refreshButton.connect('clicked', () => this._onRefresh());
-        const settingsButton = new St.Button({
-            label: '⚙  设置',
-            can_focus: true,
-            x_expand: true,
-            style_class: 'button codex-usage-action-button',
-        });
-        settingsButton.connect('clicked', () => {
-            this.menu.close();
-            this._extension.openPreferences();
-        });
-        actions.add_child(refreshButton);
-        actions.add_child(settingsButton);
-        actionItem.add_child(actions);
-        this.menu.addMenuItem(actionItem);
+        button.connect('clicked', onClicked);
+        button.set_accessible_name(accessibleName);
+        return button;
+    }
+
+    updateResetCredits(credits) {
+        const hasCredits = Array.isArray(credits) && credits.length > 0;
+        this._creditsSeparator.visible = hasCredits;
+        this._creditsBox.visible = hasCredits;
+        if (!hasCredits)
+            return;
+
+        this._creditsCount.text = `${credits.length} 张可用`;
+        this._creditsRows.remove_all_children();
+        for (const credit of credits) {
+            const row = new St.BoxLayout({
+                x_expand: true,
+                style_class: 'codex-usage-credit-row',
+            });
+            row.add_child(new St.Label({
+                text: `发放 ${formatShortDate(credit.grantedAt)}`,
+                x_expand: true,
+                style_class: 'codex-usage-credit-granted',
+            }));
+            row.add_child(new St.Label({
+                text: `${formatShortDate(credit.expiresAt)} 过期`,
+                style_class: 'codex-usage-credit-expires dim-label',
+            }));
+            this._creditsRows.add_child(row);
+        }
     }
 
     _applyDisplaySettings() {
@@ -280,6 +337,7 @@ class CodexIndicator extends PanelMenu.Button {
         if (showFiveHour)
             this._fiveHourView.update(usage.fiveHour, resetTimeMode);
         this._weeklyView.update(usage.weekly, resetTimeMode);
+        this.updateResetCredits(usage.resetCredits);
         this._syncLabel.text = formatLastUpdated(usage.fetchedAt);
 
         const target = preferredWindow(usage);

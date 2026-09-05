@@ -90,10 +90,28 @@
   max-width: 280px;
 }
 
-.codex-usage-actions {
+.codex-usage-credits {
+  spacing: 6px;
+}
+
+.codex-usage-credit-rows {
+  spacing: 4px;
+}
+
+.codex-usage-credit-row,
+.codex-usage-credits-count {
+  font-size: 12px;
+}
+
+.codex-usage-credit-row {
+  font-variant-numeric: tabular-nums;
+}
+
+.codex-usage-footer {
   spacing: 10px;
 }
 
-.codex-usage-action-button {
-  padding: 7px 10px;
+.codex-usage-icon-button {
+  padding: 4px 9px;
+  border-radius: 999px;
 }

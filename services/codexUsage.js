@@ -2,9 +2,10 @@ import GLib from 'gi://GLib';
 import Soup from 'gi://Soup?version=3.0';
 
 import {readAccessToken, CodexAuthError} from './codexAuth.js';
-import {parseUsageResponse} from '../models/usage.js';
+import {parseResetCredits, parseUsageResponse} from '../models/usage.js';
 
 const USAGE_URL = 'https://chatgpt.com/backend-api/wham/usage';
+const RESET_CREDITS_URL = 'https://chatgpt.com/backend-api/wham/rate-limit-reset-credits';
 
 export class CodexUsageError extends Error {
     constructor(code, message) {
@@ -32,7 +33,23 @@ export class CodexUsageClient {
             throw error;
         }
 
-        const message = Soup.Message.new('GET', USAGE_URL);
+        const [usagePayload, creditsPayload] = await Promise.all([
+            this._requestJson(USAGE_URL, token, cancellable),
+            // 重置卡接口失败时不影响用量展示，仅隐藏重置卡区域
+            this._requestJson(RESET_CREDITS_URL, token, cancellable).catch(() => null),
+        ]);
+
+        try {
+            const usage = parseUsageResponse(usagePayload);
+            usage.resetCredits = creditsPayload ? parseResetCredits(creditsPayload) : null;
+            return usage;
+        } catch (error) {
+            throw new CodexUsageError('parse_error', error.message);
+        }
+    }
+
+    async _requestJson(url, token, cancellable) {
+        const message = Soup.Message.new('GET', url);
         const headers = message.get_request_headers();
         headers.append('Authorization', `Bearer ${token}`);
         headers.append('Accept', 'application/json');
@@ -65,19 +82,12 @@ export class CodexUsageClient {
         if (status === 429)
             throw new CodexUsageError('rate_limited', '请求过于频繁，请稍后再试');
         if (status !== 200)
-            throw new CodexUsageError('http_error', `Codex 用量接口返回 HTTP ${status}`);
-
-        let payload;
-        try {
-            payload = JSON.parse(new TextDecoder('utf-8').decode(bytes.get_data()));
-        } catch (error) {
-            throw new CodexUsageError('parse_error', '无法解析 Codex 用量响应');
-        }
+            throw new CodexUsageError('http_error', `Codex 接口返回 HTTP ${status}`);
 
         try {
-            return parseUsageResponse(payload);
+            return JSON.parse(new TextDecoder('utf-8').decode(bytes.get_data()));
         } catch (error) {
-            throw new CodexUsageError('parse_error', error.message);
+            throw new CodexUsageError('parse_error', '无法解析 Codex 响应');
         }
     }
 }
